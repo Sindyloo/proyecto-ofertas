@@ -1,0 +1,85 @@
+═══════════════════════════════════════════════════════════════
+📱 SOLUCIÓN PARA ACCEDER DESDE TU CELULAR
+═══════════════════════════════════════════════════════════════
+
+✅ El servidor funciona correctamente en tu computadora
+✅ Tu IP local es: 192.168.0.101
+
+🔧 PASO 1: ABRIR EL FIREWALL (MUY IMPORTANTE)
+═══════════════════════════════════════════════════════════════
+
+El firewall de Windows está bloqueando el acceso desde tu celular.
+
+OPCIÓN A - Automático (Recomendado):
+1. Click derecho en el menú Inicio de Windows
+2. Selecciona "Terminal (Administrador)" o "PowerShell (Administrador)"
+3. Ejecuta este comando:
+   
+   New-NetFirewallRule -DisplayName "Flask App" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow
+
+OPCIÓN B - Usando el script:
+1. Click derecho en "abrir_firewall.ps1"
+2. Selecciona "Ejecutar con PowerShell"
+3. Si te pide permisos, acepta
+
+OPCIÓN C - Manual desde Windows:
+1. Abre "Firewall de Windows Defender" (busca en el menú Inicio)
+2. Click en "Configuración avanzada"
+3. Click en "Reglas de entrada" → "Nueva regla"
+4. Selecciona "Puerto" → Siguiente
+5. Selecciona "TCP" y escribe "5000" → Siguiente
+6. Selecciona "Permitir la conexión" → Siguiente
+7. Marca todas las casillas → Siguiente
+8. Nombre: "Flask App" → Finalizar
+
+═══════════════════════════════════════════════════════════════
+🚀 PASO 2: INICIAR EL SERVIDOR
+═══════════════════════════════════════════════════════════════
+
+Asegúrate de que el servidor esté corriendo:
+   python app.py
+
+Deberías ver un mensaje como:
+   📱 Acceso desde tu celular:
+      http://192.168.0.101:5000
+
+═══════════════════════════════════════════════════════════════
+📱 PASO 3: ACCEDER DESDE TU CELULAR
+═══════════════════════════════════════════════════════════════
+
+1. Asegúrate de que tu celular esté en la MISMA red WiFi
+   que tu computadora
+
+2. Abre el navegador en tu celular
+
+3. Ve a esta dirección:
+   http://192.168.0.101:5000
+
+4. Si ves una advertencia de seguridad:
+   - Haz clic en "Continuar al sitio" o
+   - "Avanzado" → "Continuar al sitio (no seguro)"
+   - Es seguro porque estás en tu red local
+
+═══════════════════════════════════════════════════════════════
+❌ SI AÚN NO FUNCIONA
+═══════════════════════════════════════════════════════════════
+
+1. Verifica que ambos dispositivos estén en la misma WiFi
+   - Ve a Configuración → WiFi en ambos
+   - Deben tener el mismo nombre de red
+
+2. Prueba desde tu computadora primero:
+   http://192.168.0.101:5000/test
+   (Debería funcionar igual que localhost:5000/test)
+
+3. Verifica que el servidor esté corriendo
+   - Deberías ver mensajes en la terminal
+
+4. Reinicia el router WiFi (a veces ayuda)
+
+5. Prueba con otra IP si tienes varias tarjetas de red:
+   - Ejecuta: python verificar_conexion.py
+   - Usa la IP que muestra
+
+═══════════════════════════════════════════════════════════════
+

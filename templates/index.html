@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ofertas por Categoría</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            background-color: #fff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .categoria {
+            background-color: #fff;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .categoria-header {
+            color: white;
+            padding: 15px;
+            margin: -20px -20px 15px -20px;
+            border-radius: 5px 5px 0 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .categoria-header.procesando {
+            background-color: #ff9800;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .contador {
+            float: right;
+            font-size: 0.9em;
+            font-weight: normal;
+        }
+        a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+            color: #1976D2;
+        }
+        a:visited {
+            color: #9C27B0;
+        }
+        a.visitado {
+            color: #9C27B0;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        .producto-nuevo {
+            background-color: #d4edda !important;
+            border-left: 4px solid #28a745 !important;
+        }
+        .producto-nuevo:hover {
+            background-color: #c3e6cb !important;
+        }
+        .bajo-precio {
+            background-color: #ffe6e6 !important;
+            border-left: 4px solid #dc3545 !important;
+        }
+        .bajo-precio:hover {
+            background-color: #ffcccc !important;
+        }
+        .descuento-alto {
+            background-color: #ffb3d9 !important;
+            border-left: 4px solid #ff1493 !important;
+        }
+        .descuento-alto:hover {
+            background-color: #ff99cc !important;
+        }
+        .badge-nuevo {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .badge-bajo-precio {
+            background-color: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .imagen-producto {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .imagen-producto:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .imagen-placeholder {
+            width: 80px;
+            height: 80px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.8em;
+            text-align: center;
+        }
+        /* Modal para imagen grande */
+        .modal-imagen {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            animation: fadeIn 0.3s;
+        }
+        .modal-imagen.mostrar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-imagen-contenido {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: zoomIn 0.3s;
+        }
+        .modal-imagen-cerrar {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+            z-index: 1001;
+        }
+        .modal-imagen-cerrar:hover {
+            color: #fff;
+        }
+        .modal-imagen-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f1f1f1;
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-align: center;
+            max-width: 80%;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        /* Estilos para filtros */
+        .filtros-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filtro-grupo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filtro-grupo label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9em;
+        }
+        .filtro-grupo select,
+        .filtro-grupo input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background-color: white;
+            min-width: 150px;
+        }
+        .filtro-grupo select:focus,
+        .filtro-grupo input:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .btn-limpiar-filtros {
+            padding: 8px 16px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .btn-limpiar-filtros:hover {
+            background-color: #5a6268;
+        }
+        .contador-filtrado {
+            margin-left: auto;
+            color: #6c757d;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        /* ===== ESTILOS RESPONSIVE PARA MÓVIL ===== */
+        
+        /* Contenedor para hacer tablas responsive */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 10px 0;
+        }
+        
+        /* Estilos para móvil (pantallas menores a 768px) */
+        @media screen and (max-width: 768px) {
+            body {
+                margin: 10px;
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+                margin: 10px 0;
+            }
+            
+            .status {
+                padding: 10px;
+                margin: 10px 0;
+                font-size: 0.9em;
+            }
+            
+            .categoria {
+                margin: 15px 0;
+                padding: 10px;
+            }
+            
+            .categoria-header {
+                padding: 12px;
+                font-size: 1em;
+                margin: -10px -10px 10px -10px;
+            }
+            
+            .contador {
+                float: none;
+                display: block;
+                margin-top: 5px;
+                font-size: 0.85em;
+            }
+            
+            /* Tabla responsive - scroll horizontal en móvil */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+            }
+            
+            table {
+                min-width: 800px; /* Ancho mínimo para mantener columnas */
+                font-size: 0.85em;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+                font-size: 0.9em;
+            }
+            
+            th {
+                font-size: 0.85em;
+                white-space: nowrap;
+            }
+            
+            /* Imágenes más pequeñas en móvil */
+            .imagen-producto {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .imagen-placeholder {
+                width: 60px;
+                height: 60px;
+            }
+            
+            /* Filtros en columna en móvil */
+            .filtros-container {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px;
+                gap: 10px;
+            }
+            
+            .filtro-grupo {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px;
+            }
+            
+            .filtro-grupo label {
+                font-size: 0.85em;
+            }
+            
+            .filtro-grupo select,
+            .filtro-grupo input {
+                width: 100%;
+                min-width: auto;
+                padding: 10px;
+                font-size: 1em; /* Más grande para mejor touch */
+            }
+            
+            .btn-limpiar-filtros {
+                width: 100%;
+                padding: 12px;
+                font-size: 1em;
+                min-height: 44px; /* Tamaño mínimo para touch */
+            }
+            
+            .contador-filtrado {
+                margin-left: 0;
+                margin-top: 5px;
+                text-align: center;
+            }
+            
+            /* Badges más pequeños */
+            .badge-nuevo,
+            .badge-bajo-precio {
+                font-size: 0.75em;
+                padding: 2px 6px;
+                display: inline-block;
+                margin-top: 3px;
+            }
+            
+            /* Modal más grande en móvil */
+            .modal-imagen-cerrar {
+                top: 10px;
+                right: 15px;
+                font-size: 35px;
+            }
+            
+            .modal-imagen-info {
+                bottom: 10px;
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+        }
+        
+        /* Estilos para pantallas muy pequeñas (menores a 480px) */
+        @media screen and (max-width: 480px) {
+            body {
+                margin: 5px;
+                font-size: 13px;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+            }
+            
+            .categoria-header {
+                font-size: 0.9em;
+                padding: 10px;
+            }
+            
+            table {
+                min-width: 700px;
+                font-size: 0.8em;
+            }
+            
+            th, td {
+                padding: 6px 4px;
+                font-size: 0.85em;
+            }
+            
+            .imagen-producto {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .imagen-placeholder {
+                width: 50px;
+                height: 50px;
+            }
+        }
+        
+        /* Mejoras de accesibilidad táctil */
+        @media (hover: none) and (pointer: coarse) {
+            /* Para dispositivos táctiles */
+            a, button, .btn-limpiar-filtros {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .imagen-producto {
+                cursor: pointer;
+                -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            }
+            
+            tr:hover {
+                background-color: inherit; /* Desactivar hover en móvil */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Ofertas por Categoría</h1>
+    <div id="status" class="status">
+        <div id="status-text">Cargando ofertas...</div>
+        <div id="progress"></div>
+    </div>
+    <div id="categorias-container"></div>
+
+    <!-- Modal para mostrar imagen grande -->
+    <div id="modal-imagen" class="modal-imagen" onclick="cerrarModalImagen()">
+        <span class="modal-imagen-cerrar">&times;</span>
+        <img id="modal-imagen-contenido" class="modal-imagen-contenido" src="" alt="" onclick="event.stopPropagation()" />
+        <div class="modal-imagen-info" id="modal-imagen-info"></div>
+    </div>
+
+    <script>
+        // Array de colores vibrantes para cada categoría
+        const coloresVibrantes = [
+            '#FF6B6B', // Rojo coral
+            '#4ECDC4', // Turquesa
+            '#45B7D1', // Azul cielo
+            '#FFA07A', // Salmón
+            '#98D8C8', // Verde menta
+            '#F7DC6F', // Amarillo
+            '#BB8FCE', // Púrpura claro
+            '#85C1E2', // Azul claro
+            '#F8B739', // Naranja
+            '#52BE80', // Verde esmeralda
+            '#EC7063', // Rojo claro
+            '#5DADE2', // Azul medio
+            '#F1948A', // Rosa salmón
+            '#7FB3D3', // Azul acero
+            '#82E0AA', // Verde lima
+            '#F4D03F', // Amarillo dorado
+            '#AF7AC5', // Púrpura
+            '#76D7C4', // Verde agua
+            '#F39C12', // Naranja oscuro
+            '#58D68D', // Verde claro
+            '#EB984E', // Naranja claro
+            '#5499C7', // Azul
+            '#E74C3C', // Rojo
+            '#16A085'  // Verde turquesa oscuro
+        ];
+        
+        function obtenerColorCategoria(numero) {
+            return coloresVibrantes[(numero - 1) % coloresVibrantes.length];
+        }
+        
+        // Función para escapar HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+        
+        const container = document.getElementById('categorias-container');
+        const statusText = document.getElementById('status-text');
+        const progress = document.getElementById('progress');
+        
+        let categoriasProcesadas = 0;
+        let totalCategorias = 0;
+
+        const eventSource = new EventSource('/api/ofertas/stream');
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'start') {
+                totalCategorias = data.total;
+                statusText.textContent = `Procesando ${totalCategorias} categorías...`;
+            }
+            else if (data.type === 'categoria_iniciando') {
+                // Crear contenedor para la categoría
+                const categoriaDiv = document.createElement('div');
+                categoriaDiv.className = 'categoria';
+                categoriaDiv.id = `categoria-${data.numero}`;
+                const colorProcesando = '#ff9800';
+                categoriaDiv.innerHTML = `
+                    <div class="categoria-header procesando" style="background-color: ${colorProcesando};">
+                        ${data.categoria}
+                        <span class="contador">Procesando...</span>
+                    </div>
+                    <div class="loading">Cargando productos...</div>
+                `;
+                container.appendChild(categoriaDiv);
+                statusText.textContent = `Procesando categoría ${data.numero} de ${data.total}: ${data.categoria}`;
+            }
+            else if (data.type === 'categoria_completa') {
+                try {
+                    categoriasProcesadas++;
+                    const categoriaDiv = document.getElementById(`categoria-${data.numero}`);
+                    const colorCategoria = obtenerColorCategoria(data.numero);
+                    
+                    if (data.productos.length === 0) {
+                        let emptyHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        emptyHTML += escapeHtml(data.categoria);
+                        emptyHTML += '<span class="contador">0 productos</span>';
+                        emptyHTML += '</div>';
+                        emptyHTML += '<p style="padding: 20px; text-align: center; color: #666;">No se encontraron productos para esta categoría</p>';
+                        categoriaDiv.innerHTML = emptyHTML;
+                    } else {
+                    // Extraer marcas únicas para el filtro
+                    const marcasUnicas = [...new Set(data.productos.map(p => p.marca || 'Sin marca').filter(m => m))].sort();
+                    
+                    // Crear HTML de filtros
+                    let filtrosHTML = '<div class="filtros-container">';
+                    filtrosHTML += '<div class="filtro-grupo">';
+                    filtrosHTML += '<label for="filtro-color-' + data.numero + '">Color:</label>';
+                    filtrosHTML += '<select id="filtro-color-' + data.numero + '" onchange="aplicarFiltros(' + data.numero + ')">';
+                    filtrosHTML += '<option value="">Todos los colores</option>';
+                    filtrosHTML += '<option value="verde">🟢 Verde (Nuevos)</option>';
+                    filtrosHTML += '<option value="rojo">🔴 Rojo (Bajo precio)</option>';
+                    filtrosHTML += '<option value="rosa">🩷 Rosa (Descuento alto)</option>';
+                    filtrosHTML += '</select>';
+                    filtrosHTML += '</div>';
+                    filtrosHTML += '<div class="filtro-grupo">';
+                    filtrosHTML += '<label for="filtro-marca-' + data.numero + '">Marca:</label>';
+                    filtrosHTML += '<select id="filtro-marca-' + data.numero + '" onchange="aplicarFiltros(' + data.numero + ')">';
+                    filtrosHTML += '<option value="">Todas las marcas</option>';
+                    marcasUnicas.forEach(marca => {
+                        const marcaEscapada = escapeHtml(marca);
+                        filtrosHTML += '<option value="' + marcaEscapada + '">' + marcaEscapada + '</option>';
+                    });
+                    filtrosHTML += '</select>';
+                    filtrosHTML += '</div>';
+                    filtrosHTML += '<div class="filtro-grupo">';
+                    filtrosHTML += '<label for="filtro-descuento-' + data.numero + '">Descuento mínimo (%):</label>';
+                    filtrosHTML += '<input type="number" id="filtro-descuento-' + data.numero + '" min="0" max="100" placeholder="0" onchange="aplicarFiltros(' + data.numero + ')" oninput="aplicarFiltros(' + data.numero + ')">';
+                    filtrosHTML += '</div>';
+                    filtrosHTML += '<button class="btn-limpiar-filtros" onclick="limpiarFiltros(' + data.numero + ')">Limpiar filtros</button>';
+                    filtrosHTML += '<span class="contador-filtrado" id="contador-filtrado-' + data.numero + '">' + data.productos.length + ' productos</span>';
+                    filtrosHTML += '</div>';
+                    
+                    let tableHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                    tableHTML += escapeHtml(data.categoria);
+                    tableHTML += '<span class="contador">' + data.productos.length + ' productos</span>';
+                    tableHTML += '</div>';
+                    tableHTML += filtrosHTML;
+                    tableHTML += '<div class="table-wrapper">';
+                    tableHTML += '<table id="tabla-' + data.numero + '">';
+                    tableHTML += '<tr>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Imagen</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Marca</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Producto</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Tienda</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Precio Real</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Precio</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">Descuento</th>';
+                    tableHTML += '<th style="background-color: ' + colorCategoria + ';">URL</th>';
+                    tableHTML += '</tr>';
+                    
+                    data.productos.forEach((p, index) => {
+                        const esNuevo = p.producto_nuevo === true;
+                        const bajoPrecio = p.bajo_precio === true;
+                        
+                        // Detectar descuento alto (> 80%)
+                        let descuentoNum = parseFloat(p.descuento_num || 0);
+                        const descuentoAlto = descuentoNum > 80;
+                        
+                        let clases = [];
+                        let badges = [];
+                        
+                        // PRIORIDAD 1: Producto nuevo → SIEMPRE VERDE (incluso si tiene descuento alto)
+                        if (esNuevo) {
+                            clases.push('producto-nuevo');
+                            badges.push('<span class="badge-nuevo">🆕 NUEVO</span>');
+                        }
+                        
+                        // PRIORIDAD 2: Descuento alto → ROSA FUERTE (solo para productos ANTIGUOS, no nuevos)
+                        if (descuentoAlto && !esNuevo) {
+                            clases.push('descuento-alto');
+                            badges.push('<span class="badge-bajo-precio">🔥 ' + descuentoNum.toFixed(0) + '% OFF</span>');
+                        }
+                        
+                        // PRIORIDAD 3: Bajo precio → ROJO (solo si no es nuevo y no tiene descuento alto)
+                        if (bajoPrecio && !esNuevo && !descuentoAlto) {
+                            clases.push('bajo-precio');
+                            let badgeTexto = '⬇️ BAJÓ PRECIO';
+                            if (p.precio_anterior) {
+                                badgeTexto += ' (antes: ' + escapeHtml(p.precio_anterior) + ')';
+                            }
+                            badges.push('<span class="badge-bajo-precio">' + escapeHtml(badgeTexto) + '</span>');
+                        }
+                        
+                        const claseRow = clases.join(' ');
+                        const badgesHTML = badges.join(' ');
+                        
+                        // Generar HTML de imagen
+                        let imagenHTML = '';
+                        if (p.imagen) {
+                            // Escapar valores para el onclick
+                            const imagenUrl = escapeHtml(p.imagen).replace(/'/g, "\\'");
+                            const nombreEscaped = escapeHtml(p.nombre || '').replace(/'/g, "\\'");
+                            imagenHTML = '<img src="' + escapeHtml(p.imagen) + '" alt="' + escapeHtml(p.nombre || '') + '" class="imagen-producto" onclick="abrirModalImagen(\'' + imagenUrl + '\', \'' + nombreEscaped + '\')" onerror="this.onerror=null; this.style.display=\'none\'" />';
+                        } else {
+                            imagenHTML = '';
+                        }
+                        
+                        // Escapar valores para atributos data
+                        const marcaParaData = escapeHtml(p.marca || 'Sin marca');
+                        // descuentoNum ya está definido arriba
+                        
+                        // Determinar color para el filtro
+                        let colorFila = 'ninguno';
+                        if (esNuevo) {
+                            colorFila = 'verde';
+                        } else if (descuentoAlto) {
+                            colorFila = 'rosa';
+                        } else if (bajoPrecio) {
+                            colorFila = 'rojo';
+                        }
+                        
+                        tableHTML += '<tr class="' + claseRow + '" data-marca="' + marcaParaData + '" data-descuento="' + descuentoNum + '" data-color="' + colorFila + '">';
+                        tableHTML += '<td>' + imagenHTML + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.marca || '-') + badgesHTML + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.nombre || '') + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.tienda || 'Falabella') + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.precio_real || '') + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.precio || '') + '</td>';
+                        tableHTML += '<td>' + escapeHtml(p.descuento || '') + '</td>';
+                        tableHTML += '<td><a href="' + escapeHtml(p.url || '#') + '" target="_blank" rel="noopener noreferrer" class="enlace-producto">Ver</a></td>';
+                        tableHTML += '</tr>';
+                    });
+                    
+                    tableHTML += '</table>';
+                    tableHTML += '</div>';
+                    categoriaDiv.innerHTML = tableHTML;
+                    
+                    // Agregar event listeners a los enlaces para marcar como visitados pero abrir en nueva pestaña
+                    const links = categoriaDiv.querySelectorAll('a.enlace-producto');
+                    links.forEach(link => {
+                        link.addEventListener('click', function(e) {
+                            // Marcar el enlace como visitado
+                            this.classList.add('visitado');
+                            // Guardar en localStorage que este enlace fue visitado
+                            localStorage.setItem('visited_' + this.href, 'true');
+                            // No hacer preventDefault, dejar que el navegador abra en nueva pestaña normalmente
+                            // El target="_blank" ya está en el HTML
+                        });
+                        
+                        // Verificar si el enlace ya fue visitado anteriormente
+                        if (localStorage.getItem('visited_' + link.href) === 'true') {
+                            link.classList.add('visitado');
+                        }
+                    });
+                    }
+                } catch (error) {
+                    console.error('Error procesando categoría:', error);
+                    if (categoriaDiv) {
+                        let errorHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        errorHTML += escapeHtml(data.categoria);
+                        errorHTML += '<span class="contador">Error</span>';
+                        errorHTML += '</div>';
+                        errorHTML += '<p style="padding: 20px; text-align: center; color: #d32f2f;">Error al cargar productos: ' + escapeHtml(error.message) + '</p>';
+                        categoriaDiv.innerHTML = errorHTML;
+                    }
+                }
+                
+                progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + totalCategorias + ' categorías completadas';
+            }
+            else if (data.type === 'fin') {
+                statusText.textContent = `¡Completado! ${categoriasProcesadas} categorías procesadas`;
+                progress.textContent = '';
+                eventSource.close();
+            }
+        };
+        
+        eventSource.onerror = function(event) {
+            console.error('Error en EventSource:', event);
+            statusText.textContent = 'Error al cargar ofertas. Por favor, recarga la página.';
+            eventSource.close();
+        };
+        
+        // Funciones para el modal de imagen
+        function abrirModalImagen(urlImagen, nombreProducto) {
+            const modal = document.getElementById('modal-imagen');
+            const imgModal = document.getElementById('modal-imagen-contenido');
+            const infoModal = document.getElementById('modal-imagen-info');
+            
+            if (modal && imgModal && infoModal) {
+                imgModal.src = urlImagen;
+                imgModal.alt = nombreProducto;
+                infoModal.textContent = nombreProducto;
+                modal.classList.add('mostrar');
+                document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+            }
+        }
+        
+        function cerrarModalImagen() {
+            const modal = document.getElementById('modal-imagen');
+            if (modal) {
+                modal.classList.remove('mostrar');
+                document.body.style.overflow = 'auto'; // Restaurar scroll
+            }
+        }
+        
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                cerrarModalImagen();
+            }
+        });
+        
+        // Prevenir que el click en la imagen cierre el modal
+        document.addEventListener('DOMContentLoaded', function() {
+            const imgModal = document.getElementById('modal-imagen-contenido');
+            if (imgModal) {
+                imgModal.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+        });
+        
+        // Funciones para filtrar productos
+        function aplicarFiltros(numeroCategoria) {
+            const tabla = document.getElementById(`tabla-${numeroCategoria}`);
+            if (!tabla) return;
+            
+            const filtroColor = document.getElementById(`filtro-color-${numeroCategoria}`);
+            const filtroMarca = document.getElementById(`filtro-marca-${numeroCategoria}`);
+            const filtroDescuento = document.getElementById(`filtro-descuento-${numeroCategoria}`);
+            const contadorFiltrado = document.getElementById(`contador-filtrado-${numeroCategoria}`);
+            
+            if (!filtroColor || !filtroMarca || !filtroDescuento || !contadorFiltrado) return;
+            
+            const colorSeleccionado = filtroColor.value;
+            const marcaSeleccionada = filtroMarca.value;
+            const descuentoMinimo = parseFloat(filtroDescuento.value) || 0;
+            
+            const filas = tabla.querySelectorAll('tr');
+            let contadorVisible = 0;
+            
+            // Saltar la primera fila (encabezados)
+            for (let i = 1; i < filas.length; i++) {
+                const fila = filas[i];
+                const colorFila = fila.getAttribute('data-color') || 'ninguno';
+                const marcaFila = fila.getAttribute('data-marca') || '';
+                const descuentoFila = parseFloat(fila.getAttribute('data-descuento') || 0);
+                
+                // Aplicar filtros
+                let mostrar = true;
+                
+                // Filtro de color
+                if (colorSeleccionado && colorFila !== colorSeleccionado) {
+                    mostrar = false;
+                }
+                
+                // Filtro de marca
+                if (marcaSeleccionada && marcaFila !== marcaSeleccionada) {
+                    mostrar = false;
+                }
+                
+                // Filtro de descuento
+                if (descuentoMinimo > 0 && descuentoFila < descuentoMinimo) {
+                    mostrar = false;
+                }
+                
+                // Mostrar u ocultar fila
+                if (mostrar) {
+                    fila.style.display = '';
+                    contadorVisible++;
+                } else {
+                    fila.style.display = 'none';
+                }
+            }
+            
+            // Actualizar contador
+            contadorFiltrado.textContent = `${contadorVisible} productos`;
+        }
+        
+        function limpiarFiltros(numeroCategoria) {
+            const filtroColor = document.getElementById(`filtro-color-${numeroCategoria}`);
+            const filtroMarca = document.getElementById(`filtro-marca-${numeroCategoria}`);
+            const filtroDescuento = document.getElementById(`filtro-descuento-${numeroCategoria}`);
+            
+            if (filtroColor) filtroColor.value = '';
+            if (filtroMarca) filtroMarca.value = '';
+            if (filtroDescuento) filtroDescuento.value = '';
+            
+            aplicarFiltros(numeroCategoria);
+        }
+    </script>
+</body>
+</html>
