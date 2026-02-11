@@ -90,15 +90,23 @@ def ofertas_stream():
     
     def generate():
         try:
+            print(f"DEBUG: [STREAM] Iniciando stream de ofertas para {len(CATEGORIAS)} categorías", file=sys.stderr, flush=True)
             yield f"data: {json.dumps({'type': 'start', 'total': len(CATEGORIAS)})}\n\n"
+            sys.stdout.flush()
             
             todas_las_categorias_resultado = []
             
             for i, categoria in enumerate(CATEGORIAS, 1):
                 try:
-                    yield f"data: {json.dumps({'type': 'categoria_iniciando', 'categoria': categoria['name'], 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
+                    categoria_name = categoria.get('name', 'Desconocida')
+                    print(f"DEBUG: [STREAM] Procesando categoría {i}/{len(CATEGORIAS)}: {categoria_name}", file=sys.stderr, flush=True)
+                    
+                    yield f"data: {json.dumps({'type': 'categoria_iniciando', 'categoria': categoria_name, 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
+                    sys.stdout.flush()
                     
                     resultado = obtener_ofertas_por_categoria(categoria)
+                    
+                    print(f"DEBUG: [STREAM] Categoría {i} ({categoria_name}) procesada: {len(resultado.get('productos', []))} productos", file=sys.stderr, flush=True)
                     
                     # Comparar productos con historial
                     comparar_productos(resultado['productos'], productos_anteriores_dict)
@@ -106,16 +114,20 @@ def ofertas_stream():
                     todas_las_categorias_resultado.append(resultado)
                     
                     yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': resultado['categoria'], 'productos': resultado['productos'], 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
+                    sys.stdout.flush()
+                    
                 except Exception as e:
-                    print(f"Error procesando categoría {categoria.get('name', 'desconocida')}: {e}", file=sys.stderr, flush=True)
+                    categoria_name = categoria.get('name', 'desconocida')
+                    print(f"ERROR: [STREAM] Error procesando categoría {i} ({categoria_name}): {e}", file=sys.stderr, flush=True)
                     import traceback
                     traceback.print_exc(file=sys.stderr)
                     # Continuar con la siguiente categoría
                     todas_las_categorias_resultado.append({
-                        'categoria': categoria.get('name', 'Desconocida'),
+                        'categoria': categoria_name,
                         'productos': []
                     })
-                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria.get('name', 'Desconocida'), 'productos': [], 'numero': i, 'total': len(CATEGORIAS), 'error': str(e)})}\n\n"
+                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria_name, 'productos': [], 'numero': i, 'total': len(CATEGORIAS), 'error': str(e)})}\n\n"
+                    sys.stdout.flush()
             
             # Guardar historial después de procesar todas las categorías
             # Crear nuevo diccionario con productos actuales
@@ -132,13 +144,16 @@ def ofertas_stream():
                 'productos': productos_actuales_dict  # Guardamos el dict para comparación rápida
             }
             guardar_historial(historial_nuevo)
+            print(f"DEBUG: [STREAM] Historial guardado, finalizando stream", file=sys.stderr, flush=True)
             
             yield f"data: {json.dumps({'type': 'fin'})}\n\n"
+            sys.stdout.flush()
         except Exception as e:
-            print(f"Error crítico en generate(): {e}", file=sys.stderr, flush=True)
+            print(f"ERROR CRÍTICO: [STREAM] Error en generate(): {e}", file=sys.stderr, flush=True)
             import traceback
             traceback.print_exc(file=sys.stderr)
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            sys.stdout.flush()
     
     return Response(generate(), mimetype='text/event-stream')
 
