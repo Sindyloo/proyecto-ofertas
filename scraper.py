@@ -539,6 +539,8 @@ def obtener_productos_de_categoria(category_id, category_name, max_pages=None, v
             
             # Si no hay resultados, detener la paginación
             if not results:
+                if page == 1:
+                    print(f"DEBUG: [obtener_productos_de_categoria] Categoría '{category_name}' (ID: {category_id}): No se obtuvieron resultados en la primera página", file=sys.stderr, flush=True)
                 break
             
             # Agregar información de categoría a cada producto
@@ -557,10 +559,15 @@ def obtener_productos_de_categoria(category_id, category_name, max_pages=None, v
             page += 1
                 
         except requests.exceptions.Timeout:
+            print(f"ERROR: [obtener_productos_de_categoria] Timeout para categoría '{category_name}' (ID: {category_id}) en página {page}", file=sys.stderr, flush=True)
             break  # Detener si hay timeout
         except requests.exceptions.RequestException as e:
+            print(f"ERROR: [obtener_productos_de_categoria] Error de petición para categoría '{category_name}' (ID: {category_id}) en página {page}: {e}", file=sys.stderr, flush=True)
             break  # Detener si hay error
         except Exception as e:
+            print(f"ERROR: [obtener_productos_de_categoria] Error inesperado para categoría '{category_name}' (ID: {category_id}) en página {page}: {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
             break
     
     return all_results
@@ -965,8 +972,11 @@ def obtener_ofertas_por_categoria(categoria):
     try:
         # Si hay categoria_base, usar esa para obtener productos, pero procesar con el nombre especial
         category_name_for_api = categoria_base if categoria_base else category_name
+        print(f"DEBUG: [obtener_ofertas_por_categoria] Obteniendo productos para categoría '{category_name}' (ID: {category_id}, nombre API: '{category_name_for_api}')", file=sys.stderr, flush=True)
         results = obtener_productos_de_categoria(category_id, category_name_for_api, vendedores=vendedores)
+        print(f"DEBUG: [obtener_ofertas_por_categoria] Categoría '{category_name}': {len(results)} resultados obtenidos", file=sys.stderr, flush=True)
         if not results:
+            print(f"DEBUG: [obtener_ofertas_por_categoria] Categoría '{category_name}': No se obtuvieron resultados", file=sys.stderr, flush=True)
             return {"categoria": category_name, "productos": []}
         
         productos = procesar_productos_de_categoria(
@@ -977,12 +987,17 @@ def obtener_ofertas_por_categoria(categoria):
             descuento_minimo=descuento_minimo
         )
         
+        print(f"DEBUG: [obtener_ofertas_por_categoria] Categoría '{category_name}': {len(productos)} productos procesados", file=sys.stderr, flush=True)
+        
         return {
             "categoria": category_name,
             "productos": productos
         }
         
     except Exception as e:
+        print(f"ERROR: [obtener_ofertas_por_categoria] Error procesando categoría '{category_name}' (ID: {category_id}): {e}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         return {"categoria": category_name, "productos": []}
 
 def obtener_ofertas():

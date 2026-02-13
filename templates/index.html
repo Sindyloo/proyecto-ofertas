@@ -555,10 +555,28 @@
             else if (data.type === 'categoria_completa') {
                 try {
                     categoriasProcesadas++;
-                    const categoriaDiv = document.getElementById(`categoria-${data.numero}`);
+                    let categoriaDiv = document.getElementById(`categoria-${data.numero}`);
+                    
+                    // Si el div no existe, crearlo (por si hubo un error antes)
+                    if (!categoriaDiv) {
+                        categoriaDiv = document.createElement('div');
+                        categoriaDiv.className = 'categoria';
+                        categoriaDiv.id = `categoria-${data.numero}`;
+                        container.appendChild(categoriaDiv);
+                    }
+                    
                     const colorCategoria = obtenerColorCategoria(data.numero);
                     
-                    if (data.productos.length === 0) {
+                    // Mostrar error si existe
+                    if (data.error) {
+                        let errorHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        errorHTML += escapeHtml(data.categoria);
+                        errorHTML += '<span class="contador">Error</span>';
+                        errorHTML += '</div>';
+                        errorHTML += '<p style="padding: 20px; text-align: center; color: #d32f2f;">Error al cargar productos: ' + escapeHtml(data.error) + '</p>';
+                        categoriaDiv.innerHTML = errorHTML;
+                        console.error('Error en categoría ' + data.categoria + ':', data.error);
+                    } else if (data.productos.length === 0) {
                         let emptyHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
                         emptyHTML += escapeHtml(data.categoria);
                         emptyHTML += '<span class="contador">0 productos</span>';

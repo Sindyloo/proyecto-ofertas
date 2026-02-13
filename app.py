@@ -104,43 +104,30 @@ def ofertas_stream():
                     yield f"data: {json.dumps({'type': 'categoria_iniciando', 'categoria': categoria_name, 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
                     sys.stdout.flush()
                     
-                    # Intentar obtener ofertas con manejo robusto de errores
-                    try:
-                        resultado = obtener_ofertas_por_categoria(categoria)
-                    except Exception as categoria_error:
-                        # Si falla obtener la categoría, continuar con lista vacía
-                        print(f"ERROR: [STREAM] Error al obtener categoría {i} ({categoria_name}): {type(categoria_error).__name__}: {str(categoria_error)}", file=sys.stderr, flush=True)
-                        resultado = {"categoria": categoria_name, "productos": []}
+                    resultado = obtener_ofertas_por_categoria(categoria)
                     
                     print(f"DEBUG: [STREAM] Categoría {i} ({categoria_name}) procesada: {len(resultado.get('productos', []))} productos", file=sys.stderr, flush=True)
                     
-                    # Comparar productos con historial (solo si hay productos y no hay error)
-                    if resultado.get('productos'):
-                        try:
-                            comparar_productos(resultado['productos'], productos_anteriores_dict)
-                        except Exception as comp_error:
-                            print(f"WARNING: [STREAM] Error comparando productos de categoría {i} ({categoria_name}): {type(comp_error).__name__}", file=sys.stderr, flush=True)
+                    # Comparar productos con historial
+                    comparar_productos(resultado['productos'], productos_anteriores_dict)
                     
                     todas_las_categorias_resultado.append(resultado)
                     
-                    # Enviar resultado (incluso si está vacío)
                     yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': resultado['categoria'], 'productos': resultado['productos'], 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
                     sys.stdout.flush()
                     
                 except Exception as e:
                     categoria_name = categoria.get('name', 'desconocida')
-                    print(f"ERROR: [STREAM] Error crítico procesando categoría {i} ({categoria_name}): {type(e).__name__}: {str(e)}", file=sys.stderr, flush=True)
+                    print(f"ERROR: [STREAM] Error procesando categoría {i} ({categoria_name}): {e}", file=sys.stderr, flush=True)
                     import traceback
                     traceback.print_exc(file=sys.stderr)
-                    # Continuar con la siguiente categoría - NO detener el proceso
+                    # Continuar con la siguiente categoría
                     todas_las_categorias_resultado.append({
                         'categoria': categoria_name,
                         'productos': []
                     })
                     yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria_name, 'productos': [], 'numero': i, 'total': len(CATEGORIAS), 'error': str(e)})}\n\n"
                     sys.stdout.flush()
-                    # Continuar con la siguiente categoría
-                    continue
             
             # Guardar historial después de procesar todas las categorías
             # Crear nuevo diccionario con productos actuales
