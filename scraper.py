@@ -31,7 +31,6 @@ CATEGORIAS = [
     {"id": "cat40712", "name": "Laptops", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "cat760706", "name": "Celulares-y-Telefonos", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "cat6370521", "name": "Linea-blanca", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
-    {"id": "cat50684", "name": "Dormitorio", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG11951", "name": "Muebles-y-Organizacion", "vendedores": "FALABELLA::SODIMAC"},
     {"id": "cat560663", "name": "Maquillaje"},
     {"id": "cat11140487", "name": "Dermocosmetica"},
@@ -45,7 +44,9 @@ CATEGORIAS = [
     {"id": "CATG11989", "name": "Cocina", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG11946", "name": "Construccion", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG36090", "name": "Calzado-y-zapatillas"},
-    {"id": "cat1470526", "name": "Zapatos"}
+    {"id": "cat1470526", "name": "Zapatos"},
+    {"id": "cat50684", "name": "Dormitorio", "vendedores": "FALABELLA::TOTTUS::SODIMAC"}
+
 ]
 
 # ============================================================================
