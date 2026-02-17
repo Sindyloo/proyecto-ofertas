@@ -10,6 +10,12 @@ ADIDAS_API_BASE = "https://www.adidas.pe"
 
 # Definir todas las categorías a consultar
 CATEGORIAS = [
+    {"id": "cat40727", "name": "Perfumes"},
+    {"id": "cat40571", "name": "Deportes-y-aire-libre"},
+    {"id": "cat1470548", "name": "Zapatillas"},
+    {"id": "cat1470530", "name": "Sandalias"},
+    {"id": "cat8050466", "name": "Mascotas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
+    {"id": "CATG36068", "name": "Menaje", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG11988", "name": "Baño", "vendedores": "FALABELLA::SODIMAC::TOTTUS"},
     {"id": "adidas_mujer_60", "name": "🔥 ADIDAS MUJER > 40%", "tipo": "adidas", "url": "/mujer?grid=true&sale_percentage_es_pe=50%7C55%7C60%7C70&sort=price-low-to-high", "descuento_minimo": 30},
     {"id": "CATG46233", "name": "Pinturas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
@@ -35,18 +41,11 @@ CATEGORIAS = [
     {"id": "cat560663", "name": "Maquillaje"},
     {"id": "cat11140487", "name": "Dermocosmetica"},
     {"id": "cat4220604", "name": "Carteras-y-bolsos"},
-    {"id": "cat40727", "name": "Perfumes"},
-    {"id": "cat40571", "name": "Deportes-y-aire-libre"},
-    {"id": "cat1470548", "name": "Zapatillas"},
-    {"id": "cat1470530", "name": "Sandalias"},
-    {"id": "cat8050466", "name": "Mascotas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
-    {"id": "CATG36068", "name": "Menaje", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG11989", "name": "Cocina", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG11946", "name": "Construccion", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG36090", "name": "Calzado-y-zapatillas"},
     {"id": "cat1470526", "name": "Zapatos"},
     {"id": "cat50684", "name": "Dormitorio", "vendedores": "FALABELLA::TOTTUS::SODIMAC"}
-
 ]
 
 # ============================================================================
