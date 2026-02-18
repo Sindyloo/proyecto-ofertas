@@ -10,23 +10,21 @@ ADIDAS_API_BASE = "https://www.adidas.pe"
 
 # Definir todas las categorías a consultar
 CATEGORIAS = [
-    {"id": "cat40727", "name": "Perfumes"},
+    {"id": "cat7720500", "name": "Ropa-interior-y-pijamas"},
+    {"id": "cat560663", "name": "Maquillaje"},
+    {"id": "cat4100462", "name": "⭐ MANGO MUJER > 50%", "marca_especial": "MANGO", "descuento_minimo": 50, "categoria_base": "Moda-Mujer"},
+    {"id": "CATG11988", "name": "Baño", "vendedores": "FALABELLA::SODIMAC::TOTTUS"},
     {"id": "cat40571", "name": "Deportes-y-aire-libre"},
     {"id": "cat1470548", "name": "Zapatillas"},
     {"id": "cat1470530", "name": "Sandalias"},
-    {"id": "cat8050466", "name": "Mascotas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG36068", "name": "Menaje", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
-    {"id": "CATG11988", "name": "Baño", "vendedores": "FALABELLA::SODIMAC::TOTTUS"},
-    {"id": "cat560663", "name": "Maquillaje"},
+    {"id": "CATG11951", "name": "Muebles-y-Organizacion", "vendedores": "FALABELLA::SODIMAC"},
     {"id": "cat11140487", "name": "Dermocosmetica"},
     {"id": "cat4220604", "name": "Carteras-y-bolsos"},
     {"id": "adidas_mujer_60", "name": "🔥 ADIDAS MUJER > 40%", "tipo": "adidas", "url": "/mujer?grid=true&sale_percentage_es_pe=50%7C55%7C60%7C70&sort=price-low-to-high", "descuento_minimo": 30},
-    {"id": "CATG46233", "name": "Pinturas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "cat13920465", "name": "Utiles-de-aseo-y-limpieza", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
-    {"id": "cat4100462", "name": "⭐ MANGO MUJER > 50%", "marca_especial": "MANGO", "descuento_minimo": 50, "categoria_base": "Moda-Mujer"},
     {"id": "cat11380472", "name": "Navidad"},
     {"id": "cat4100462", "name": "Moda-Mujer"},
-    {"id": "cat7720500", "name": "Ropa-interior-y-pijamas"},
     {"id": "G16130113", "name": "Belleza"},
     {"id": "CATG12022", "name": "Moda-Hombre"},
     {"id": "cat40497", "name": "Mundo-Bebe", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
@@ -45,7 +43,11 @@ CATEGORIAS = [
     {"id": "CATG11946", "name": "Construccion", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG36090", "name": "Calzado-y-zapatillas"},
     {"id": "cat1470526", "name": "Zapatos"},
-    {"id": "cat50684", "name": "Dormitorio", "vendedores": "FALABELLA::TOTTUS::SODIMAC"}
+    {"id": "cat50684", "name": "Dormitorio", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
+    {"id": "CATG46233", "name": "Pinturas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
+    {"id": "cat8050466", "name": "Mascotas", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
+    {"id": "cat40727", "name": "Perfumes"}
+
 ]
 
 # ============================================================================
