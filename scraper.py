@@ -3,6 +3,7 @@ import sys
 import json
 import re
 import time
+import random
 from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 
 API_URL = "https://www.falabella.com.pe/s/browse/v1/listing/pe"
@@ -1005,6 +1006,8 @@ def obtener_ofertas_por_categoria(categoria):
 def obtener_ofertas():
     # Obtener productos de todas las categorías
     all_results = []
+    
+    random.shuffle(CATEGORIAS)  # Mezclar categorías aleatoriamente
     
     for i, categoria in enumerate(CATEGORIAS, 1):
         try:

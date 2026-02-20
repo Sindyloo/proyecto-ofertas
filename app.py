@@ -3,6 +3,7 @@ from scraper import obtener_ofertas_por_categoria, CATEGORIAS
 import sys
 import json
 import os
+import random
 from datetime import datetime
 
 app = Flask(__name__)
@@ -90,6 +91,8 @@ def ofertas_stream():
     
     def generate():
         try:
+            random.shuffle(CATEGORIAS)  # Mezclar categorías aleatoriamente
+            
             print(f"DEBUG: [STREAM] Iniciando stream de ofertas para {len(CATEGORIAS)} categorías", file=sys.stderr, flush=True)
             yield f"data: {json.dumps({'type': 'start', 'total': len(CATEGORIAS)})}\n\n"
             sys.stdout.flush()
