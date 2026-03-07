@@ -64,7 +64,7 @@ def comparar_productos(productos_actuales, productos_anteriores_dict):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", categorias=CATEGORIAS)
 
 @app.route("/test")
 def test():
@@ -78,42 +78,48 @@ def test():
 @app.route("/api/ofertas/stream")
 def ofertas_stream():
     """Endpoint que devuelve ofertas por categoría usando Server-Sent Events.
-    Acepta exclude (índices 0-based), exclude_names (nombres ya mostrados) y limit.
-    Excluye por índice y por nombre para no repetir la misma categoría (ej. Moda-Mujer en dos índices)."""
-    exclude_str = request.args.get('exclude', '')
-    exclude_names_str = request.args.get('exclude_names', '')
-    limit = max(1, min(50, request.args.get('limit', 10, type=int)))
+    - include: índices 0-based a cargar (ej. ?include=0,2,15) — solo esas categorías.
+    - Si no hay include: usa exclude/exclude_names/limit y elige al azar."""
+    include_str = request.args.get('include', '')
     total_categorias = len(CATEGORIAS)
 
-    # Índices ya mostrados este ciclo (0-based)
-    try:
-        exclude_set = set(int(x.strip()) for x in exclude_str.split(',') if x.strip())
-        exclude_set = set(i for i in exclude_set if 0 <= i < total_categorias)
-    except (ValueError, AttributeError):
-        exclude_set = set()
+    if include_str.strip():
+        # Modo "incluir solo estas": cargar solo los índices indicados
+        try:
+            include_indices = [int(x.strip()) for x in include_str.split(',') if x.strip()]
+            include_indices = [i for i in include_indices if 0 <= i < total_categorias]
+        except (ValueError, AttributeError):
+            include_indices = []
+        if not include_indices:
+            include_indices = [0]
+        categorias_slice = [(i, CATEGORIAS[i]) for i in include_indices]
+    else:
+        exclude_str = request.args.get('exclude', '')
+        exclude_names_str = request.args.get('exclude_names', '')
+        limit = max(1, min(50, request.args.get('limit', 10, type=int)))
 
-    # Nombres de categoría ya mostrados (evita repetir "Moda-Mujer" u otras con mismo nombre en distinto índice)
-    exclude_names_set = set((x or '').strip() for x in exclude_names_str.split(',') if (x or '').strip())
+        try:
+            exclude_set = set(int(x.strip()) for x in exclude_str.split(',') if x.strip())
+            exclude_set = set(i for i in exclude_set if 0 <= i < total_categorias)
+        except (ValueError, AttributeError):
+            exclude_set = set()
+        exclude_names_set = set((x or '').strip() for x in exclude_names_str.split(',') if (x or '').strip())
 
-    # Categorías disponibles: ni el índice ni el nombre pueden estar ya mostrados
-    def disponible(i):
-        if i in exclude_set:
-            return False
-        nombre = (CATEGORIAS[i].get('name') or '').strip()
-        if exclude_names_set and nombre in exclude_names_set:
-            return False
-        return True
+        def disponible(i):
+            if i in exclude_set:
+                return False
+            nombre = (CATEGORIAS[i].get('name') or '').strip()
+            if exclude_names_set and nombre in exclude_names_set:
+                return False
+            return True
 
-    available_indices = [i for i in range(total_categorias) if disponible(i)]
-    if not available_indices:
-        # Ciclo completo: ya se mostraron todas; empezar de nuevo
-        available_indices = list(range(total_categorias))
+        available_indices = [i for i in range(total_categorias) if disponible(i)]
+        if not available_indices:
+            available_indices = list(range(total_categorias))
 
-    # Elegir hasta 'limit' al azar (sin repetir)
-    n_choose = min(limit, len(available_indices))
-    chosen_indices = random.sample(available_indices, n_choose)
-    # Lista de (índice_0based, categoría) en el orden aleatorio elegido
-    categorias_slice = [(i, CATEGORIAS[i]) for i in chosen_indices]
+        n_choose = min(limit, len(available_indices))
+        chosen_indices = random.sample(available_indices, n_choose)
+        categorias_slice = [(i, CATEGORIAS[i]) for i in chosen_indices]
 
     # Cargar historial anterior
     historial = cargar_historial()

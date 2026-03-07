@@ -29,6 +29,30 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.12);
             border: 1px solid #e0e0e0;
         }
+        .selector-categorias {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            align-items: center;
+        }
+        .selector-categorias .cat-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .selector-categorias .cat-checkbox { cursor: pointer; }
+        #btn-cargar-seleccion {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+        #btn-cargar-seleccion:hover { background: #34495e; }
         .categoria {
             background-color: #fff;
             margin: 20px 0;
@@ -502,6 +526,19 @@
             </table>
         </div>
     </div>
+    <h2 id="titulo-especiales" style="margin-top: 20px;">Descuentos especiales</h2>
+    <div id="especiales-container"></div>
+
+    <h2 style="margin-top: 24px;">Selecciona categorías a cargar</h2>
+    <div id="selector-categorias" class="selector-categorias">
+        {% for categoria in categorias %}
+        <label class="cat-label"><input type="checkbox" class="cat-checkbox" value="{{ loop.index0 }}"> {{ categoria.name }}</label>
+        {% endfor %}
+        <div style="margin-top: 12px;">
+            <button type="button" id="btn-cargar-seleccion">Cargar categorías seleccionadas</button>
+        </div>
+    </div>
+    <h2 style="margin-top: 24px;">Categorías cargadas</h2>
     <div id="categorias-container"></div>
 
     <!-- Modal para mostrar imagen grande -->
@@ -557,9 +594,13 @@
             return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
         }
         
+        const especialesContainer = document.getElementById('especiales-container');
         const container = document.getElementById('categorias-container');
         const statusText = document.getElementById('status-text');
         const progress = document.getElementById('progress');
+        var currentStreamContainer = null;
+        var useCycleForStream = false;
+        var INDICES_ESPECIALES = [2, 15];
         
         // Marcas y descuento mínimo para la grilla fija (datos en duro)
         const MARCAS_SELECCIONADAS = ['Michael Kors', 'Kipling', 'Adidas', 'Calvin Klein', 'Lacoste'];
@@ -637,27 +678,41 @@
         let indicesMostradosEstaCarga = [];
         let nombresMostradosEstaCarga = [];
 
-        // Ciclo sin repetición: excluimos por índice y por nombre para no repetir la misma categoría (ej. "Moda-Mujer" en dos índices).
-        let shownIndicesStr = localStorage.getItem('ofertas_shown_indices') || '';
-        let shownNamesStr = localStorage.getItem('ofertas_shown_names') || '';
-        let shownIndices = shownIndicesStr ? shownIndicesStr.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
-        let shownNames = shownNamesStr ? shownNamesStr.split(',').map(function(s) { return (s || '').trim(); }).filter(Boolean) : [];
-        var excludeParam = shownIndices.length ? ('&exclude=' + encodeURIComponent(shownIndices.join(','))) : '';
-        if (shownNames.length) excludeParam += '&exclude_names=' + encodeURIComponent(shownNames.join(','));
-        const streamUrl = '/api/ofertas/stream?limit=' + LIMITE_POR_PAGINA + excludeParam;
-        const eventSource = new EventSource(streamUrl);
-        
-        eventSource.onmessage = function(event) {
+        function runStream(includeIndices, targetContainer, useCycle) {
+            currentStreamContainer = targetContainer;
+            useCycleForStream = useCycle;
+            var url = '/api/ofertas/stream?';
+            if (includeIndices && includeIndices.length) {
+                url += 'include=' + encodeURIComponent(includeIndices.join(','));
+            } else {
+                var shownIndicesStr = localStorage.getItem('ofertas_shown_indices') || '';
+                var shownNamesStr = localStorage.getItem('ofertas_shown_names') || '';
+                var shownIndices = shownIndicesStr ? shownIndicesStr.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
+                var shownNames = shownNamesStr ? shownNamesStr.split(',').map(function(s) { return (s || '').trim(); }).filter(Boolean) : [];
+                url += 'limit=' + LIMITE_POR_PAGINA;
+                if (shownIndices.length) url += '&exclude=' + encodeURIComponent(shownIndices.join(','));
+                if (shownNames.length) url += '&exclude_names=' + encodeURIComponent(shownNames.join(','));
+            }
+            var eventSource = new EventSource(url);
+            eventSource.onmessage = onStreamMessage.bind(null, eventSource);
+            eventSource.onerror = function() {
+                statusText.textContent = 'Error al cargar ofertas. Reintenta.';
+                eventSource.close();
+            };
+        }
+
+        function onStreamMessage(eventSource, event) {
             const data = JSON.parse(event.data);
             
             if (data.type === 'start') {
                 totalCategorias = data.total;
                 limiteEsteLote = data.limit || LIMITE_POR_PAGINA;
+                categoriasProcesadas = 0;
                 indicesMostradosEstaCarga = [];
                 nombresMostradosEstaCarga = [];
                 productosMarcasSeleccionadas = [];
                 urlsMarcasSeleccionadas = new Set();
-                statusText.textContent = 'Procesando ' + limiteEsteLote + ' categorías al azar (sin repetir hasta completar ciclo)...';
+                statusText.textContent = 'Procesando ' + limiteEsteLote + ' categorías...';
             }
             else if (data.type === 'categoria_iniciando') {
                 const categoriaDiv = document.createElement('div');
@@ -671,7 +726,7 @@
                     </div>
                     <div class="loading">Cargando productos...</div>
                 `;
-                container.appendChild(categoriaDiv);
+                (currentStreamContainer || container).appendChild(categoriaDiv);
                 statusText.textContent = `Procesando categoría ${data.numero} de ${data.total}: ${data.categoria}`;
             }
             else if (data.type === 'categoria_completa') {
@@ -680,13 +735,13 @@
                     indicesMostradosEstaCarga.push(data.numero - 1);
                     if (data.categoria) nombresMostradosEstaCarga.push(String(data.categoria).trim());
                     let categoriaDiv = document.getElementById(`categoria-${data.numero}`);
-                    
+                    var target = currentStreamContainer || container;
                     // Si el div no existe, crearlo (por si hubo un error antes)
                     if (!categoriaDiv) {
                         categoriaDiv = document.createElement('div');
                         categoriaDiv.className = 'categoria';
                         categoriaDiv.id = `categoria-${data.numero}`;
-                        container.appendChild(categoriaDiv);
+                        target.appendChild(categoriaDiv);
                     }
                     
                     const colorCategoria = obtenerColorCategoria(data.numero);
@@ -874,34 +929,48 @@
                 progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + limiteEsteLote + ' categorías de esta carga';
             }
             else if (data.type === 'fin') {
-                // Solo cuando la grilla cargó por completo: guardar índices y nombres; no se repetirán hasta que el ciclo se reinicie
-                var newShown = shownIndices.concat(indicesMostradosEstaCarga);
-                var newNames = shownNames.concat(nombresMostradosEstaCarga);
-                var uniqueNames = [];
-                var seen = {};
-                for (var n = 0; n < newNames.length; n++) {
-                    var nom = newNames[n];
-                    if (nom && !seen[nom]) { seen[nom] = true; uniqueNames.push(nom); }
-                }
-                if (newShown.length >= totalCategorias) {
-                    localStorage.removeItem('ofertas_shown_indices');
-                    localStorage.removeItem('ofertas_shown_names');
-                    statusText.textContent = 'Ciclo completado (' + totalCategorias + ' categorías). Próxima recarga: nuevo ciclo con 10 al azar.';
+                if (useCycleForStream) {
+                    var shownIndicesStr2 = localStorage.getItem('ofertas_shown_indices') || '';
+                    var shownNamesStr2 = localStorage.getItem('ofertas_shown_names') || '';
+                    var shownIndices2 = shownIndicesStr2 ? shownIndicesStr2.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
+                    var shownNames2 = shownNamesStr2 ? shownNamesStr2.split(',').map(function(s) { return (s || '').trim(); }).filter(Boolean) : [];
+                    var newShown = shownIndices2.concat(indicesMostradosEstaCarga);
+                    var newNames = shownNames2.concat(nombresMostradosEstaCarga);
+                    var uniqueNames = [];
+                    var seen = {};
+                    for (var n = 0; n < newNames.length; n++) {
+                        var nom = newNames[n];
+                        if (nom && !seen[nom]) { seen[nom] = true; uniqueNames.push(nom); }
+                    }
+                    if (newShown.length >= totalCategorias) {
+                        localStorage.removeItem('ofertas_shown_indices');
+                        localStorage.removeItem('ofertas_shown_names');
+                        statusText.textContent = 'Ciclo completado (' + totalCategorias + ' categorías).';
+                    } else {
+                        localStorage.setItem('ofertas_shown_indices', newShown.join(','));
+                        localStorage.setItem('ofertas_shown_names', uniqueNames.join(','));
+                        statusText.textContent = 'Listo. Ya mostradas ' + uniqueNames.length + ' categorías este ciclo.';
+                    }
                 } else {
-                    localStorage.setItem('ofertas_shown_indices', newShown.join(','));
-                    localStorage.setItem('ofertas_shown_names', uniqueNames.join(','));
-                    statusText.textContent = 'Listo. Ya mostradas ' + uniqueNames.length + ' categorías este ciclo. F5 = otras 10 al azar (sin repetir).';
+                    statusText.textContent = 'Carga completada.';
                 }
                 progress.textContent = '';
                 eventSource.close();
             }
-        };
-        
-        eventSource.onerror = function(event) {
-            console.error('Error en EventSource:', event);
-            statusText.textContent = 'Error al cargar ofertas. Por favor, recarga la página.';
-            eventSource.close();
-        };
+        }
+
+        runStream(INDICES_ESPECIALES, especialesContainer, false);
+
+        document.getElementById('btn-cargar-seleccion').addEventListener('click', function() {
+            var checkboxes = document.querySelectorAll('.cat-checkbox:checked');
+            var selected = [];
+            checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value, 10)); });
+            if (selected.length === 0) {
+                alert('Selecciona al menos una categoría.');
+                return;
+            }
+            runStream(selected, container, false);
+        });
         
         // Funciones para el modal de imagen
         function abrirModalImagen(urlImagen, nombreProducto) {
