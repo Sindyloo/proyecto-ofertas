@@ -53,6 +53,16 @@
             border-radius: 6px;
         }
         #btn-cargar-seleccion:hover { background: #34495e; }
+        #btn-cargar-todas {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+        #btn-cargar-todas:hover { background: #2ecc71; }
         .categoria {
             background-color: #fff;
             margin: 20px 0;
@@ -499,7 +509,7 @@
 <body>
     <h1>Ofertas por Categoría</h1>
     <div id="status" class="status">
-        <div id="status-text">Cargando ofertas...</div>
+        <div id="status-text">Selecciona categorías y haz clic en Cargar categorías seleccionadas.</div>
         <div id="progress"></div>
         <button type="button" id="btn-reintentar" style="display: none; margin-top: 8px; padding: 8px 16px; cursor: pointer;">Reintentar</button>
     </div>
@@ -527,16 +537,14 @@
             </table>
         </div>
     </div>
-    <h2 id="titulo-especiales" style="margin-top: 20px;">Descuentos especiales</h2>
-    <div id="especiales-container"></div>
-
     <h2 style="margin-top: 24px;">Selecciona categorías a cargar</h2>
     <div id="selector-categorias" class="selector-categorias">
         {% for categoria in categorias %}
         <label class="cat-label"><input type="checkbox" class="cat-checkbox" value="{{ loop.index0 }}"> {{ categoria.name }}</label>
         {% endfor %}
-        <div style="margin-top: 12px;">
+        <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
             <button type="button" id="btn-cargar-seleccion">Cargar categorías seleccionadas</button>
+            <button type="button" id="btn-cargar-todas">Cargar todas las categorías</button>
         </div>
     </div>
     <h2 style="margin-top: 24px;">Categorías cargadas</h2>
@@ -595,13 +603,11 @@
             return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
         }
         
-        const especialesContainer = document.getElementById('especiales-container');
         const container = document.getElementById('categorias-container');
         const statusText = document.getElementById('status-text');
         const progress = document.getElementById('progress');
         var currentStreamContainer = null;
         var useCycleForStream = false;
-        var INDICES_ESPECIALES = [2, 15];
         
         // Marcas y descuento mínimo para la grilla fija (datos en duro)
         const MARCAS_SELECCIONADAS = ['Michael Kors', 'Kipling', 'Adidas', 'Calvin Klein', 'Lacoste'];
@@ -962,8 +968,6 @@
             }
         }
 
-        runStream(INDICES_ESPECIALES, especialesContainer, false);
-
         document.getElementById('btn-cargar-seleccion').addEventListener('click', function() {
             var checkboxes = document.querySelectorAll('.cat-checkbox:checked');
             var selected = [];
@@ -973,6 +977,13 @@
                 return;
             }
             runStream(selected, container, false);
+        });
+
+        document.getElementById('btn-cargar-todas').addEventListener('click', function() {
+            var allCheckboxes = document.querySelectorAll('.cat-checkbox');
+            var allIndices = [];
+            for (var i = 0; i < allCheckboxes.length; i++) { allIndices.push(i); }
+            runStream(allIndices, container, false);
         });
         
         // Funciones para el modal de imagen
