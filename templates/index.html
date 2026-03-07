@@ -21,6 +21,14 @@
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .grilla-marcas-seleccionadas {
+            background-color: #fff;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            border: 1px solid #e0e0e0;
+        }
         .categoria {
             background-color: #fff;
             margin: 20px 0;
@@ -470,6 +478,30 @@
         <div id="status-text">Cargando ofertas...</div>
         <div id="progress"></div>
     </div>
+    <!-- Grilla fija: solo marcas seleccionadas con más de X% descuento (datos en duro) -->
+    <div id="grilla-marcas-seleccionadas" class="grilla-marcas-seleccionadas" style="display: none;">
+        <div class="categoria-header" style="background-color: #2c3e50; color: white; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+            <strong>Marcas seleccionadas (&gt;60% descuento)</strong>
+            <span class="contador" id="contador-marcas-seleccionadas">0 productos</span>
+        </div>
+        <div class="table-wrapper">
+            <table id="tabla-marcas-seleccionadas">
+                <thead>
+                    <tr style="background-color: #2c3e50; color: white;">
+                        <th>Imagen</th>
+                        <th>Marca</th>
+                        <th>Producto</th>
+                        <th>Tienda</th>
+                        <th>Precio Real</th>
+                        <th>Precio</th>
+                        <th>Descuento</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-marcas-seleccionadas"></tbody>
+            </table>
+        </div>
+    </div>
     <div id="categorias-container"></div>
 
     <!-- Modal para mostrar imagen grande -->
@@ -529,16 +561,89 @@
         const statusText = document.getElementById('status-text');
         const progress = document.getElementById('progress');
         
+        // Marcas y descuento mínimo para la grilla fija (datos en duro)
+        const MARCAS_SELECCIONADAS = ['Michael Kors', 'Kipling', 'Adidas', 'Calvin Klein', 'Lacoste'];
+        const DESCUENTO_MINIMO_MARCAS = 60;
+        let productosMarcasSeleccionadas = [];
+        let urlsMarcasSeleccionadas = new Set();
+        
+        function esMarcaSeleccionadaConDescuento(p) {
+            var marca = (p.marca || '').trim();
+            var desc = parseFloat(p.descuento_num || 0);
+            if (desc < DESCUENTO_MINIMO_MARCAS) return false;  // mínimo 60% descuento
+            var marcaUpper = marca.toUpperCase();
+            for (var i = 0; i < MARCAS_SELECCIONADAS.length; i++) {
+                if (MARCAS_SELECCIONADAS[i].toUpperCase() === marcaUpper) return true;
+            }
+            return false;
+        }
+        
+        function agregarProductosAMarcasSeleccionadas(productos) {
+            if (!productos || !productos.length) return;
+            for (var i = 0; i < productos.length; i++) {
+                var p = productos[i];
+                if (!esMarcaSeleccionadaConDescuento(p)) continue;
+                var url = p.url || '';
+                if (url && urlsMarcasSeleccionadas.has(url)) continue;
+                if (url) urlsMarcasSeleccionadas.add(url);
+                productosMarcasSeleccionadas.push(p);
+            }
+        }
+        
+        function renderizarGrillaMarcasSeleccionadas() {
+            var tbody = document.getElementById('tbody-marcas-seleccionadas');
+            var contadorEl = document.getElementById('contador-marcas-seleccionadas');
+            var grillaEl = document.getElementById('grilla-marcas-seleccionadas');
+            if (!tbody || !contadorEl || !grillaEl) return;
+            tbody.innerHTML = '';
+            if (productosMarcasSeleccionadas.length === 0) {
+                grillaEl.style.display = 'none';
+                contadorEl.textContent = '0 productos';
+                return;
+            }
+            grillaEl.style.display = 'block';
+            contadorEl.textContent = productosMarcasSeleccionadas.length + ' productos';
+            productosMarcasSeleccionadas.forEach(function(p) {
+                var descuentoNum = parseFloat(p.descuento_num || 0);
+                var imagenHTML = '';
+                if (p.imagen) {
+                    var imgUrl = escapeHtml(p.imagen).replace(/'/g, "\\'");
+                    var nomEsc = escapeHtml(p.nombre || '').replace(/'/g, "\\'");
+                    imagenHTML = '<img src="' + escapeHtml(p.imagen) + '" alt="' + escapeHtml(p.nombre || '') + '" class="imagen-producto" onclick="abrirModalImagen(\'' + imgUrl + '\', \'' + nomEsc + '\')" onerror="this.onerror=null; this.style.display=\'none\'" />';
+                }
+                var row = '<tr>';
+                row += '<td>' + imagenHTML + '</td>';
+                row += '<td>' + escapeHtml(p.marca || '-') + '</td>';
+                row += '<td>' + escapeHtml(p.nombre || '') + '</td>';
+                row += '<td>' + escapeHtml(p.tienda || 'Falabella') + '</td>';
+                row += '<td>' + escapeHtml(p.precio_real || '') + '</td>';
+                row += '<td>' + escapeHtml(p.precio || '') + '</td>';
+                row += '<td>' + escapeHtml(p.descuento || '') + '</td>';
+                row += '<td><a href="' + escapeHtml(p.url || '#') + '" target="_blank" rel="noopener noreferrer" class="enlace-producto">Ver</a></td>';
+                row += '</tr>';
+                tbody.innerHTML += row;
+            });
+            var links = tbody.querySelectorAll('a.enlace-producto');
+            links.forEach(function(link) {
+                link.addEventListener('click', function() { this.classList.add('visitado'); localStorage.setItem('visited_' + this.href, 'true'); });
+                if (localStorage.getItem('visited_' + link.href) === 'true') link.classList.add('visitado');
+            });
+        }
+        
         let categoriasProcesadas = 0;
         let totalCategorias = 0;
         let limiteEsteLote = 10;
         const LIMITE_POR_PAGINA = 10;
-        let indicesMostradosEstaCarga = [];  // índices 0-based de las categorías que se muestran en esta carga
+        let indicesMostradosEstaCarga = [];
+        let nombresMostradosEstaCarga = [];
 
-        // Ciclo sin repetición: guardamos qué categorías (por índice) ya mostramos; en cada F5 salen 10 al azar de las que faltan; cuando se completan todas se reinicia
+        // Ciclo sin repetición: excluimos por índice y por nombre para no repetir la misma categoría (ej. "Moda-Mujer" en dos índices).
         let shownIndicesStr = localStorage.getItem('ofertas_shown_indices') || '';
+        let shownNamesStr = localStorage.getItem('ofertas_shown_names') || '';
         let shownIndices = shownIndicesStr ? shownIndicesStr.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
-        const excludeParam = shownIndices.length ? ('&exclude=' + encodeURIComponent(shownIndices.join(','))) : '';
+        let shownNames = shownNamesStr ? shownNamesStr.split(',').map(function(s) { return (s || '').trim(); }).filter(Boolean) : [];
+        var excludeParam = shownIndices.length ? ('&exclude=' + encodeURIComponent(shownIndices.join(','))) : '';
+        if (shownNames.length) excludeParam += '&exclude_names=' + encodeURIComponent(shownNames.join(','));
         const streamUrl = '/api/ofertas/stream?limit=' + LIMITE_POR_PAGINA + excludeParam;
         const eventSource = new EventSource(streamUrl);
         
@@ -549,6 +654,9 @@
                 totalCategorias = data.total;
                 limiteEsteLote = data.limit || LIMITE_POR_PAGINA;
                 indicesMostradosEstaCarga = [];
+                nombresMostradosEstaCarga = [];
+                productosMarcasSeleccionadas = [];
+                urlsMarcasSeleccionadas = new Set();
                 statusText.textContent = 'Procesando ' + limiteEsteLote + ' categorías al azar (sin repetir hasta completar ciclo)...';
             }
             else if (data.type === 'categoria_iniciando') {
@@ -569,7 +677,8 @@
             else if (data.type === 'categoria_completa') {
                 try {
                     categoriasProcesadas++;
-                    indicesMostradosEstaCarga.push(data.numero - 1);  // guardar índice 0-based para no repetir
+                    indicesMostradosEstaCarga.push(data.numero - 1);
+                    if (data.categoria) nombresMostradosEstaCarga.push(String(data.categoria).trim());
                     let categoriaDiv = document.getElementById(`categoria-${data.numero}`);
                     
                     // Si el div no existe, crearlo (por si hubo un error antes)
@@ -760,16 +869,28 @@
                     }
                 }
                 
+                agregarProductosAMarcasSeleccionadas(data.productos || []);
+                renderizarGrillaMarcasSeleccionadas();
                 progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + limiteEsteLote + ' categorías de esta carga';
             }
             else if (data.type === 'fin') {
+                // Solo cuando la grilla cargó por completo: guardar índices y nombres; no se repetirán hasta que el ciclo se reinicie
                 var newShown = shownIndices.concat(indicesMostradosEstaCarga);
+                var newNames = shownNames.concat(nombresMostradosEstaCarga);
+                var uniqueNames = [];
+                var seen = {};
+                for (var n = 0; n < newNames.length; n++) {
+                    var nom = newNames[n];
+                    if (nom && !seen[nom]) { seen[nom] = true; uniqueNames.push(nom); }
+                }
                 if (newShown.length >= totalCategorias) {
                     localStorage.removeItem('ofertas_shown_indices');
+                    localStorage.removeItem('ofertas_shown_names');
                     statusText.textContent = 'Ciclo completado (' + totalCategorias + ' categorías). Próxima recarga: nuevo ciclo con 10 al azar.';
                 } else {
                     localStorage.setItem('ofertas_shown_indices', newShown.join(','));
-                    statusText.textContent = 'Listo. Ya mostradas ' + newShown.length + '/' + totalCategorias + ' este ciclo. F5 = otras 10 al azar (sin repetir).';
+                    localStorage.setItem('ofertas_shown_names', uniqueNames.join(','));
+                    statusText.textContent = 'Listo. Ya mostradas ' + uniqueNames.length + ' categorías este ciclo. F5 = otras 10 al azar (sin repetir).';
                 }
                 progress.textContent = '';
                 eventSource.close();

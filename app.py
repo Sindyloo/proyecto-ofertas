@@ -78,9 +78,10 @@ def test():
 @app.route("/api/ofertas/stream")
 def ofertas_stream():
     """Endpoint que devuelve ofertas por categoría usando Server-Sent Events.
-    Acepta exclude (índices 0-based ya mostrados este ciclo) y limit.
-    Elige 10 categorías al azar entre las no mostradas; cuando ya se mostraron todas, se reinicia el ciclo."""
+    Acepta exclude (índices 0-based), exclude_names (nombres ya mostrados) y limit.
+    Excluye por índice y por nombre para no repetir la misma categoría (ej. Moda-Mujer en dos índices)."""
     exclude_str = request.args.get('exclude', '')
+    exclude_names_str = request.args.get('exclude_names', '')
     limit = max(1, min(50, request.args.get('limit', 10, type=int)))
     total_categorias = len(CATEGORIAS)
 
@@ -91,8 +92,19 @@ def ofertas_stream():
     except (ValueError, AttributeError):
         exclude_set = set()
 
-    # Categorías disponibles para esta carga (las que aún no se han mostrado)
-    available_indices = [i for i in range(total_categorias) if i not in exclude_set]
+    # Nombres de categoría ya mostrados (evita repetir "Moda-Mujer" u otras con mismo nombre en distinto índice)
+    exclude_names_set = set((x or '').strip() for x in exclude_names_str.split(',') if (x or '').strip())
+
+    # Categorías disponibles: ni el índice ni el nombre pueden estar ya mostrados
+    def disponible(i):
+        if i in exclude_set:
+            return False
+        nombre = (CATEGORIAS[i].get('name') or '').strip()
+        if exclude_names_set and nombre in exclude_names_set:
+            return False
+        return True
+
+    available_indices = [i for i in range(total_categorias) if disponible(i)]
     if not available_indices:
         # Ciclo completo: ya se mostraron todas; empezar de nuevo
         available_indices = list(range(total_categorias))
@@ -183,7 +195,15 @@ def ofertas_stream():
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
             sys.stdout.flush()
     
-    return Response(generate(), mimetype='text/event-stream')
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        }
+    )
 
 if __name__ == "__main__":
     import socket
