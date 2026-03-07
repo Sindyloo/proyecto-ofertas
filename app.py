@@ -3,6 +3,7 @@ from scraper import obtener_ofertas_por_categoria, CATEGORIAS
 import sys
 import json
 import os
+import random
 from datetime import datetime
 
 app = Flask(__name__)
@@ -77,19 +78,34 @@ def test():
 @app.route("/api/ofertas/stream")
 def ofertas_stream():
     """Endpoint que devuelve ofertas por categoría usando Server-Sent Events.
-    Acepta offset y limit: muestra 10 categorías en orden ascendente por defecto.
-    Ej: offset=0&limit=10 → categorías 1-10; offset=10&limit=10 → 11-20."""
-    offset = max(0, request.args.get('offset', 0, type=int))
+    Acepta exclude (índices 0-based ya mostrados este ciclo) y limit.
+    Elige 10 categorías al azar entre las no mostradas; cuando ya se mostraron todas, se reinicia el ciclo."""
+    exclude_str = request.args.get('exclude', '')
     limit = max(1, min(50, request.args.get('limit', 10, type=int)))
     total_categorias = len(CATEGORIAS)
-    # Ajustar offset si se pasa del final
-    offset = min(offset, total_categorias - 1) if total_categorias else 0
-    categorias_slice = CATEGORIAS[offset:offset + limit]
+
+    # Índices ya mostrados este ciclo (0-based)
+    try:
+        exclude_set = set(int(x.strip()) for x in exclude_str.split(',') if x.strip())
+        exclude_set = set(i for i in exclude_set if 0 <= i < total_categorias)
+    except (ValueError, AttributeError):
+        exclude_set = set()
+
+    # Categorías disponibles para esta carga (las que aún no se han mostrado)
+    available_indices = [i for i in range(total_categorias) if i not in exclude_set]
+    if not available_indices:
+        # Ciclo completo: ya se mostraron todas; empezar de nuevo
+        available_indices = list(range(total_categorias))
+
+    # Elegir hasta 'limit' al azar (sin repetir)
+    n_choose = min(limit, len(available_indices))
+    chosen_indices = random.sample(available_indices, n_choose)
+    # Lista de (índice_0based, categoría) en el orden aleatorio elegido
+    categorias_slice = [(i, CATEGORIAS[i]) for i in chosen_indices]
 
     # Cargar historial anterior
     historial = cargar_historial()
 
-    # Convertir lista anterior a diccionario por URL para búsqueda rápida
     productos_anteriores_dict = {}
     for categoria_data in historial.get('categorias', []):
         for producto in categoria_data.get('productos', []):
@@ -99,14 +115,14 @@ def ofertas_stream():
 
     def generate():
         try:
-            print(f"DEBUG: [STREAM] Iniciando stream: categorías {offset+1}-{offset+len(categorias_slice)} de {total_categorias} (orden ascendente)", file=sys.stderr, flush=True)
-            yield f"data: {json.dumps({'type': 'start', 'total': total_categorias, 'offset': offset, 'limit': limit})}\n\n"
+            print(f"DEBUG: [STREAM] Categorías al azar (sin repetir este ciclo): índices {chosen_indices}", file=sys.stderr, flush=True)
+            yield f"data: {json.dumps({'type': 'start', 'total': total_categorias, 'limit': len(categorias_slice)})}\n\n"
             sys.stdout.flush()
 
             todas_las_categorias_resultado = []
 
-            for idx, categoria in enumerate(categorias_slice):
-                i = offset + idx + 1  # índice global 1-based
+            for idx_0based, categoria in categorias_slice:
+                i = idx_0based + 1  # número 1-based para la UI
                 try:
                     categoria_name = categoria.get('name', 'Desconocida')
                     print(f"DEBUG: [STREAM] Procesando categoría {i}/{total_categorias}: {categoria_name}", file=sys.stderr, flush=True)
@@ -136,7 +152,7 @@ def ofertas_stream():
                     yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria_name, 'productos': [], 'numero': i, 'total': total_categorias, 'error': str(e)})}\n\n"
                     sys.stdout.flush()
 
-            # Merge con historial: mantener orden ascendente por nombre de categoría
+            # Merge con historial
             order_names = [c.get('name', '') for c in CATEGORIAS]
             existing_by_name = {c['categoria']: c for c in historial.get('categorias', [])}
             for result in todas_las_categorias_resultado:
@@ -156,7 +172,7 @@ def ofertas_stream():
                 'productos': productos_actuales_dict
             }
             guardar_historial(historial_nuevo)
-            print(f"DEBUG: [STREAM] Historial guardado (merge con {len(categorias_slice)} categorías), finalizando stream", file=sys.stderr, flush=True)
+            print(f"DEBUG: [STREAM] Historial guardado, finalizando stream", file=sys.stderr, flush=True)
 
             yield f"data: {json.dumps({'type': 'fin'})}\n\n"
             sys.stdout.flush()

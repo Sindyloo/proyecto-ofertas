@@ -533,11 +533,13 @@
         let totalCategorias = 0;
         let limiteEsteLote = 10;
         const LIMITE_POR_PAGINA = 10;
+        let indicesMostradosEstaCarga = [];  // índices 0-based de las categorías que se muestran en esta carga
 
-        // Paginación: cada recarga muestra el siguiente lote de 10 categorías (1-10, 11-20, 21-30...)
-        let batchIndex = parseInt(localStorage.getItem('ofertas_batch_index') || '0', 10);
-        const offset = batchIndex * LIMITE_POR_PAGINA;
-        const streamUrl = '/api/ofertas/stream?offset=' + offset + '&limit=' + LIMITE_POR_PAGINA;
+        // Ciclo sin repetición: guardamos qué categorías (por índice) ya mostramos; en cada F5 salen 10 al azar de las que faltan; cuando se completan todas se reinicia
+        let shownIndicesStr = localStorage.getItem('ofertas_shown_indices') || '';
+        let shownIndices = shownIndicesStr ? shownIndicesStr.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return !isNaN(n); }) : [];
+        const excludeParam = shownIndices.length ? ('&exclude=' + encodeURIComponent(shownIndices.join(','))) : '';
+        const streamUrl = '/api/ofertas/stream?limit=' + LIMITE_POR_PAGINA + excludeParam;
         const eventSource = new EventSource(streamUrl);
         
         eventSource.onmessage = function(event) {
@@ -546,9 +548,8 @@
             if (data.type === 'start') {
                 totalCategorias = data.total;
                 limiteEsteLote = data.limit || LIMITE_POR_PAGINA;
-                const desde = (data.offset || 0) + 1;
-                const hasta = Math.min((data.offset || 0) + limiteEsteLote, totalCategorias);
-                statusText.textContent = `Procesando categorías ${desde}-${hasta} de ${totalCategorias} (orden ascendente)...`;
+                indicesMostradosEstaCarga = [];
+                statusText.textContent = 'Procesando ' + limiteEsteLote + ' categorías al azar (sin repetir hasta completar ciclo)...';
             }
             else if (data.type === 'categoria_iniciando') {
                 const categoriaDiv = document.createElement('div');
@@ -568,6 +569,7 @@
             else if (data.type === 'categoria_completa') {
                 try {
                     categoriasProcesadas++;
+                    indicesMostradosEstaCarga.push(data.numero - 1);  // guardar índice 0-based para no repetir
                     let categoriaDiv = document.getElementById(`categoria-${data.numero}`);
                     
                     // Si el div no existe, crearlo (por si hubo un error antes)
@@ -758,15 +760,17 @@
                     }
                 }
                 
-                progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + limiteEsteLote + ' categorías de este lote';
+                progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + limiteEsteLote + ' categorías de esta carga';
             }
             else if (data.type === 'fin') {
-                const totalBatches = Math.max(1, Math.ceil(totalCategorias / LIMITE_POR_PAGINA));
-                const nextBatch = totalBatches ? (batchIndex + 1) % totalBatches : 0;
-                localStorage.setItem('ofertas_batch_index', String(nextBatch));
-                const desde = offset + 1;
-                const hasta = Math.min(offset + LIMITE_POR_PAGINA, totalCategorias);
-                statusText.textContent = `Completado: categorías ${desde}-${hasta} de ${totalCategorias}. Próxima recarga: lote ${nextBatch + 1}/${totalBatches}`;
+                var newShown = shownIndices.concat(indicesMostradosEstaCarga);
+                if (newShown.length >= totalCategorias) {
+                    localStorage.removeItem('ofertas_shown_indices');
+                    statusText.textContent = 'Ciclo completado (' + totalCategorias + ' categorías). Próxima recarga: nuevo ciclo con 10 al azar.';
+                } else {
+                    localStorage.setItem('ofertas_shown_indices', newShown.join(','));
+                    statusText.textContent = 'Listo. Ya mostradas ' + newShown.length + '/' + totalCategorias + ' este ciclo. F5 = otras 10 al azar (sin repetir).';
+                }
                 progress.textContent = '';
                 eventSource.close();
             }
