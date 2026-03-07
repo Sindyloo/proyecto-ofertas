@@ -93,6 +93,7 @@ def ofertas_stream():
         if not include_indices:
             include_indices = [0]
         categorias_slice = [(i, CATEGORIAS[i]) for i in include_indices]
+        chosen_indices = include_indices
     else:
         exclude_str = request.args.get('exclude', '')
         exclude_names_str = request.args.get('exclude_names', '')
@@ -121,6 +122,7 @@ def ofertas_stream():
         chosen_indices = random.sample(available_indices, n_choose)
         categorias_slice = [(i, CATEGORIAS[i]) for i in chosen_indices]
 
+    # chosen_indices ya está definido (include o random); generate() lo usa en el log
     # Cargar historial anterior
     historial = cargar_historial()
 

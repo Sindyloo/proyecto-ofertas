@@ -501,6 +501,7 @@
     <div id="status" class="status">
         <div id="status-text">Cargando ofertas...</div>
         <div id="progress"></div>
+        <button type="button" id="btn-reintentar" style="display: none; margin-top: 8px; padding: 8px 16px; cursor: pointer;">Reintentar</button>
     </div>
     <!-- Grilla fija: solo marcas seleccionadas con más de X% descuento (datos en duro) -->
     <div id="grilla-marcas-seleccionadas" class="grilla-marcas-seleccionadas" style="display: none;">
@@ -696,8 +697,10 @@
             var eventSource = new EventSource(url);
             eventSource.onmessage = onStreamMessage.bind(null, eventSource);
             eventSource.onerror = function() {
-                statusText.textContent = 'Error al cargar ofertas. Reintenta.';
+                statusText.textContent = 'Error al cargar ofertas.';
                 eventSource.close();
+                var btn = document.getElementById('btn-reintentar');
+                if (btn) { btn.style.display = 'inline-block'; btn.onclick = function() { btn.style.display = 'none'; runStream(includeIndices, targetContainer, useCycle); }; }
             };
         }
 
