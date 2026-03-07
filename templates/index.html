@@ -28,6 +28,11 @@
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .categoria-indice {
+            font-weight: bold;
+            margin-right: 6px;
+            opacity: 0.95;
+        }
         .categoria-header {
             color: white;
             padding: 15px;
@@ -526,25 +531,33 @@
         
         let categoriasProcesadas = 0;
         let totalCategorias = 0;
+        let limiteEsteLote = 10;
+        const LIMITE_POR_PAGINA = 10;
 
-        const eventSource = new EventSource('/api/ofertas/stream');
+        // Paginación: cada recarga muestra el siguiente lote de 10 categorías (1-10, 11-20, 21-30...)
+        let batchIndex = parseInt(localStorage.getItem('ofertas_batch_index') || '0', 10);
+        const offset = batchIndex * LIMITE_POR_PAGINA;
+        const streamUrl = '/api/ofertas/stream?offset=' + offset + '&limit=' + LIMITE_POR_PAGINA;
+        const eventSource = new EventSource(streamUrl);
         
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
             
             if (data.type === 'start') {
                 totalCategorias = data.total;
-                statusText.textContent = `Procesando ${totalCategorias} categorías...`;
+                limiteEsteLote = data.limit || LIMITE_POR_PAGINA;
+                const desde = (data.offset || 0) + 1;
+                const hasta = Math.min((data.offset || 0) + limiteEsteLote, totalCategorias);
+                statusText.textContent = `Procesando categorías ${desde}-${hasta} de ${totalCategorias} (orden ascendente)...`;
             }
             else if (data.type === 'categoria_iniciando') {
-                // Crear contenedor para la categoría
                 const categoriaDiv = document.createElement('div');
                 categoriaDiv.className = 'categoria';
                 categoriaDiv.id = `categoria-${data.numero}`;
                 const colorProcesando = '#ff9800';
                 categoriaDiv.innerHTML = `
                     <div class="categoria-header procesando" style="background-color: ${colorProcesando};">
-                        ${data.categoria}
+                        <span class="categoria-indice">${data.numero}.</span> ${escapeHtml(data.categoria)}
                         <span class="contador">Procesando...</span>
                     </div>
                     <div class="loading">Cargando productos...</div>
@@ -570,6 +583,7 @@
                     // Mostrar error si existe
                     if (data.error) {
                         let errorHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        errorHTML += '<span class="categoria-indice">' + data.numero + '.</span> ';
                         errorHTML += escapeHtml(data.categoria);
                         errorHTML += '<span class="contador">Error</span>';
                         errorHTML += '</div>';
@@ -578,6 +592,7 @@
                         console.error('Error en categoría ' + data.categoria + ':', data.error);
                     } else if (data.productos.length === 0) {
                         let emptyHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        emptyHTML += '<span class="categoria-indice">' + data.numero + '.</span> ';
                         emptyHTML += escapeHtml(data.categoria);
                         emptyHTML += '<span class="contador">0 productos</span>';
                         emptyHTML += '</div>';
@@ -617,6 +632,7 @@
                     filtrosHTML += '</div>';
                     
                     let tableHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                    tableHTML += '<span class="categoria-indice">' + data.numero + '.</span> ';
                     tableHTML += escapeHtml(data.categoria);
                     tableHTML += '<span class="contador">' + data.productos.length + ' productos</span>';
                     tableHTML += '</div>';
@@ -733,6 +749,7 @@
                     console.error('Error procesando categoría:', error);
                     if (categoriaDiv) {
                         let errorHTML = '<div class="categoria-header" style="background-color: ' + colorCategoria + ';">';
+                        errorHTML += '<span class="categoria-indice">' + (data.numero || '') + '.</span> ';
                         errorHTML += escapeHtml(data.categoria);
                         errorHTML += '<span class="contador">Error</span>';
                         errorHTML += '</div>';
@@ -741,10 +758,15 @@
                     }
                 }
                 
-                progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + totalCategorias + ' categorías completadas';
+                progress.textContent = 'Progreso: ' + categoriasProcesadas + ' de ' + limiteEsteLote + ' categorías de este lote';
             }
             else if (data.type === 'fin') {
-                statusText.textContent = `¡Completado! ${categoriasProcesadas} categorías procesadas`;
+                const totalBatches = Math.max(1, Math.ceil(totalCategorias / LIMITE_POR_PAGINA));
+                const nextBatch = totalBatches ? (batchIndex + 1) % totalBatches : 0;
+                localStorage.setItem('ofertas_batch_index', String(nextBatch));
+                const desde = offset + 1;
+                const hasta = Math.min(offset + LIMITE_POR_PAGINA, totalCategorias);
+                statusText.textContent = `Completado: categorías ${desde}-${hasta} de ${totalCategorias}. Próxima recarga: lote ${nextBatch + 1}/${totalBatches}`;
                 progress.textContent = '';
                 eventSource.close();
             }

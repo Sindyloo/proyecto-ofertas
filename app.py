@@ -1,9 +1,8 @@
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 from scraper import obtener_ofertas_por_categoria, CATEGORIAS
 import sys
 import json
 import os
-import random
 from datetime import datetime
 
 app = Flask(__name__)
@@ -77,10 +76,19 @@ def test():
 
 @app.route("/api/ofertas/stream")
 def ofertas_stream():
-    """Endpoint que devuelve ofertas por categoría usando Server-Sent Events"""
+    """Endpoint que devuelve ofertas por categoría usando Server-Sent Events.
+    Acepta offset y limit: muestra 10 categorías en orden ascendente por defecto.
+    Ej: offset=0&limit=10 → categorías 1-10; offset=10&limit=10 → 11-20."""
+    offset = max(0, request.args.get('offset', 0, type=int))
+    limit = max(1, min(50, request.args.get('limit', 10, type=int)))
+    total_categorias = len(CATEGORIAS)
+    # Ajustar offset si se pasa del final
+    offset = min(offset, total_categorias - 1) if total_categorias else 0
+    categorias_slice = CATEGORIAS[offset:offset + limit]
+
     # Cargar historial anterior
     historial = cargar_historial()
-    
+
     # Convertir lista anterior a diccionario por URL para búsqueda rápida
     productos_anteriores_dict = {}
     for categoria_data in historial.get('categorias', []):
@@ -88,67 +96,68 @@ def ofertas_stream():
             url = producto.get('url', '')
             if url:
                 productos_anteriores_dict[url] = producto
-    
+
     def generate():
         try:
-            random.shuffle(CATEGORIAS)  # Mezclar categorías aleatoriamente
-            
-            print(f"DEBUG: [STREAM] Iniciando stream de ofertas para {len(CATEGORIAS)} categorías", file=sys.stderr, flush=True)
-            yield f"data: {json.dumps({'type': 'start', 'total': len(CATEGORIAS)})}\n\n"
+            print(f"DEBUG: [STREAM] Iniciando stream: categorías {offset+1}-{offset+len(categorias_slice)} de {total_categorias} (orden ascendente)", file=sys.stderr, flush=True)
+            yield f"data: {json.dumps({'type': 'start', 'total': total_categorias, 'offset': offset, 'limit': limit})}\n\n"
             sys.stdout.flush()
-            
+
             todas_las_categorias_resultado = []
-            
-            for i, categoria in enumerate(CATEGORIAS, 1):
+
+            for idx, categoria in enumerate(categorias_slice):
+                i = offset + idx + 1  # índice global 1-based
                 try:
                     categoria_name = categoria.get('name', 'Desconocida')
-                    print(f"DEBUG: [STREAM] Procesando categoría {i}/{len(CATEGORIAS)}: {categoria_name}", file=sys.stderr, flush=True)
-                    
-                    yield f"data: {json.dumps({'type': 'categoria_iniciando', 'categoria': categoria_name, 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
+                    print(f"DEBUG: [STREAM] Procesando categoría {i}/{total_categorias}: {categoria_name}", file=sys.stderr, flush=True)
+
+                    yield f"data: {json.dumps({'type': 'categoria_iniciando', 'categoria': categoria_name, 'numero': i, 'total': total_categorias})}\n\n"
                     sys.stdout.flush()
-                    
+
                     resultado = obtener_ofertas_por_categoria(categoria)
-                    
+
                     print(f"DEBUG: [STREAM] Categoría {i} ({categoria_name}) procesada: {len(resultado.get('productos', []))} productos", file=sys.stderr, flush=True)
-                    
-                    # Comparar productos con historial
+
                     comparar_productos(resultado['productos'], productos_anteriores_dict)
-                    
                     todas_las_categorias_resultado.append(resultado)
-                    
-                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': resultado['categoria'], 'productos': resultado['productos'], 'numero': i, 'total': len(CATEGORIAS)})}\n\n"
+
+                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': resultado['categoria'], 'productos': resultado['productos'], 'numero': i, 'total': total_categorias})}\n\n"
                     sys.stdout.flush()
-                    
+
                 except Exception as e:
                     categoria_name = categoria.get('name', 'desconocida')
                     print(f"ERROR: [STREAM] Error procesando categoría {i} ({categoria_name}): {e}", file=sys.stderr, flush=True)
                     import traceback
                     traceback.print_exc(file=sys.stderr)
-                    # Continuar con la siguiente categoría
                     todas_las_categorias_resultado.append({
                         'categoria': categoria_name,
                         'productos': []
                     })
-                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria_name, 'productos': [], 'numero': i, 'total': len(CATEGORIAS), 'error': str(e)})}\n\n"
+                    yield f"data: {json.dumps({'type': 'categoria_completa', 'categoria': categoria_name, 'productos': [], 'numero': i, 'total': total_categorias, 'error': str(e)})}\n\n"
                     sys.stdout.flush()
-            
-            # Guardar historial después de procesar todas las categorías
-            # Crear nuevo diccionario con productos actuales
+
+            # Merge con historial: mantener orden ascendente por nombre de categoría
+            order_names = [c.get('name', '') for c in CATEGORIAS]
+            existing_by_name = {c['categoria']: c for c in historial.get('categorias', [])}
+            for result in todas_las_categorias_resultado:
+                existing_by_name[result['categoria']] = result
+            merged_categorias = [existing_by_name.get(name, {'categoria': name, 'productos': []}) for name in order_names]
+
             productos_actuales_dict = {}
-            for categoria_data in todas_las_categorias_resultado:
+            for categoria_data in merged_categorias:
                 for producto in categoria_data.get('productos', []):
                     url = producto.get('url', '')
                     if url:
                         productos_actuales_dict[url] = producto
-            
+
             historial_nuevo = {
                 'fecha': datetime.now().isoformat(),
-                'categorias': todas_las_categorias_resultado,
-                'productos': productos_actuales_dict  # Guardamos el dict para comparación rápida
+                'categorias': merged_categorias,
+                'productos': productos_actuales_dict
             }
             guardar_historial(historial_nuevo)
-            print(f"DEBUG: [STREAM] Historial guardado, finalizando stream", file=sys.stderr, flush=True)
-            
+            print(f"DEBUG: [STREAM] Historial guardado (merge con {len(categorias_slice)} categorías), finalizando stream", file=sys.stderr, flush=True)
+
             yield f"data: {json.dumps({'type': 'fin'})}\n\n"
             sys.stdout.flush()
         except Exception as e:
