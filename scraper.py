@@ -19,6 +19,7 @@ CATEGORIAS = [
     {"id": "cat1470548", "name": "Zapatillas"},
     {"id": "cat1470530", "name": "Sandalias"},
     {"id": "CATG36068", "name": "Menaje", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
+    {"id": "cat40474", "name": "Iluminacion", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "CATG14326", "name": "Accesorios", "vendedores": "FALABELLA::SODIMAC"},
     {"id": "cat11140487", "name": "Dermocosmetica", "vendedores": "FALABELLA::TOTTUS::SODIMAC"},
     {"id": "cat4220604", "name": "Carteras-y-bolsos"},
